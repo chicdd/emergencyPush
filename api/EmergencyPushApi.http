@@ -1,0 +1,6 @@
+@EmergencyPushApi_HostAddress = http://localhost:5048
+
+GET {{EmergencyPushApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

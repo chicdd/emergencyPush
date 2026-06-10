@@ -112,7 +112,9 @@ public class PushLoopHostedService : BackgroundService
         if (users.Count == 0) return;
 
         var tokens = users.Select(u => u.Token).ToList();
-        await _fcm.SendMulticastAsync(tokens, "비상 상황", message, ct);
+        var sendResults = await _fcm.SendMulticastAsync(
+            tokens, "비상 상황", message, dataType: "emergency", ct: ct);
+        var success = sendResults.Count(r => r.Success);
 
         var now = KoreaTime.Now;
         foreach (var u in users)
@@ -127,6 +129,8 @@ public class PushLoopHostedService : BackgroundService
         }
         await db.SaveChangesAsync(ct);
 
-        _logger.LogDebug("비상 푸시 발송: {Total}명", users.Count);
+        // 발송 결과를 한눈에: FCM 사용 가능 여부 + 성공/전체.
+        _logger.LogInformation("비상 푸시: 성공 {Ok}/{Total} (FCM Available={Avail})",
+            success, users.Count, _fcm.Available);
     }
 }

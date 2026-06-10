@@ -12,4 +12,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
   </ItemGroup>
 
+  <!-- 서비스 계정 키가 있으면 빌드/게시 출력에 포함(없으면 무시) -->
+  <ItemGroup Condition="Exists('firebase-service-account.json')">
+    <None Update="firebase-service-account.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

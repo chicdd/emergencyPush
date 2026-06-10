@@ -75,6 +75,18 @@ class ApiService {
     return false;
   }
 
+  /// 서버 접속 가능 여부 확인.
+  static Future<bool> checkHealth() async {
+    try {
+      final res = await http
+          .get(_u('/api/emergency/status'))
+          .timeout(const Duration(seconds: 5));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// iOS 단축어가 호출할 ping URL(설정 화면에 표시/복사).
   static String pingUrl(String phone) => '${AppConfig.apiBaseUrl}/api/device/ping/$phone';
 }

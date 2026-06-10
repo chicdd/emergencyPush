@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -20,19 +21,27 @@ class EmergencyScreen extends StatefulWidget {
 class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderStateMixin {
   late final AnimationController _spin;
   late final AnimationController _pulse;
+  Timer? _pollTimer;
   bool _resolving = false;
 
   @override
   void initState() {
     super.initState();
     _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
-    // 1초 밝아짐 + 1초 어두워짐 = 2초 주기
     _pulse = AnimationController(vsync: this, duration: const Duration(seconds: 1))
       ..repeat(reverse: true);
+    // 5초마다 서버 상태 확인 — 다른 기기에서 해제했을 때도 자동으로 홈으로 복귀
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkResolved());
+  }
+
+  Future<void> _checkResolved() async {
+    final active = await ApiService.isEmergencyActive();
+    if (!active && mounted) Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _spin.dispose();
     _pulse.dispose();
     super.dispose();

@@ -77,10 +77,14 @@ public class FcmService
                 {
                     Headers = new Dictionary<string, string>
                     {
-                        ["apns-priority"] = "10",       // 즉시 전달 (기본값 5는 지연/무음 처리 가능)
-                        ["apns-push-type"] = "alert",   // 알림 배너+소리 명시
+                        ["apns-priority"] = "10",
+                        ["apns-push-type"] = "alert",
                     },
-                    Aps = new Aps { Sound = "default" }
+                    // CriticalSound: 무음/방해금지 모드 무시, 볼륨 최대 (Apple Critical Alerts 승인 필요)
+                    Aps = new Aps
+                    {
+                        CriticalSound = new CriticalSound { Name = "default", Critical = true, Volume = 1.0 }
+                    }
                 },
                 Data = new Dictionary<string, string> { ["type"] = "emergency" }
             };

@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 /// 백그라운드(앱 종료/백그라운드 상태)에서 메시지 수신 시 호출.
 /// 반드시 최상위 함수 + vm:entry-point 여야 한다.
@@ -17,10 +18,11 @@ class FcmService {
   static Future<String?> requestPermissionAndToken() async {
     try {
       final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      debugPrint('FCM 알림 권한: ${settings.authorizationStatus}');
+      debugPrint('[FCM] 권한 상태: ${settings.authorizationStatus}');
+      debugPrint('[FCM] alert=${settings.alert} sound=${settings.sound} badge=${settings.badge}');
 
       final token = await _messaging.getToken();
-      debugPrint('FCM 토큰: $token');
+      debugPrint('[FCM] 토큰: $token');
       return token;
     } catch (e, st) {
       debugPrint('FCM 토큰 획득 실패: $e\n$st');
@@ -33,7 +35,14 @@ class FcmService {
   static void listen({required VoidCallback onEmergency}) {
     // 포그라운드 수신
     FirebaseMessaging.onMessage.listen((message) {
-      if (_isEmergency(message)) onEmergency();
+      debugPrint('[FCM] onMessage 수신');
+      debugPrint('[FCM]   notification: ${message.notification?.title} / ${message.notification?.body}');
+      debugPrint('[FCM]   data: ${message.data}');
+      debugPrint('[FCM]   iOS sound: ${message.notification?.apple?.sound?.name}');
+      if (_isEmergency(message)) {
+        FlutterRingtonePlayer().playAlarm();
+        onEmergency();
+      }
     });
 
     // 백그라운드에서 알림 탭으로 앱이 열림

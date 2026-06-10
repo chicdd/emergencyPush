@@ -40,7 +40,7 @@ class FcmService {
       debugPrint('[FCM]   data: ${message.data}');
       debugPrint('[FCM]   iOS sound: ${message.notification?.apple?.sound?.name}');
       if (_isEmergency(message)) {
-        FlutterRingtonePlayer().playAlarm();
+        FlutterRingtonePlayer().playAlarm(volume: 1.0);
         onEmergency();
       }
     });

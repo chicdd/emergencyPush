@@ -11,6 +11,20 @@ class ApiService {
   static const _jsonHeaders = {'Content-Type': 'application/json'};
   static const _timeout = Duration(seconds: 12);
 
+  /// 로그아웃: 서버에서 FCM 토큰 제거 → 해당 기기로 푸시 발송 중단.
+  static Future<bool> unregister(String phone, String? fcmToken) async {
+    try {
+      final res = await http
+          .post(_u('/api/auth/unregister'),
+              headers: _jsonHeaders,
+              body: jsonEncode({'phone': phone, 'firebaseToken': fcmToken}))
+          .timeout(_timeout);
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 인증 화면: 휴대폰번호 + FCM 토큰 등록.
   static Future<bool> register(String phone, String? fcmToken) async {
     try {

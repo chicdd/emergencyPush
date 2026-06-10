@@ -76,9 +76,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               animation: _breathe,
               builder: (_, __) {
                 final t = (math.sin(_breathe.value * math.pi * 2 - math.pi / 2) + 1) / 2;
-                final color = Color.lerp(AppColors.breatheBlue, AppColors.breatheRed, t)!;
-                final scale = 0.78 + 0.20 * t;
-                final glow  = 0.28 + 0.42 * t;
+                // 파랑에서 아주 살짝 초록으로만 변화, t를 0.15로 제한
+                final color = Color.lerp(AppColors.breatheBlue, const Color(0xFF00C896), t * 0.15)!;
+                final scale = 0.80 + 0.06 * t;   // 크기 변화 최소화
+                final glow  = 0.22 + 0.10 * t;   // 밝기 변화 최소화
                 return Center(
                   child: Transform.scale(
                     scale: scale,

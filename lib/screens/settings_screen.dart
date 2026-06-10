@@ -20,7 +20,132 @@ class SettingsScreen extends StatelessWidget {
         title: const Text('설정', style: TextStyle(letterSpacing: 2)),
       ),
       body: SafeArea(
-        child: Platform.isIOS ? const _IosSettings() : const _AndroidSettings(),
+        child: Column(
+          children: [
+            Expanded(
+              child: Platform.isIOS ? const _IosSettings() : const _AndroidSettings(),
+            ),
+            // iOS/Android 공통: 서버측 비상(푸시)을 즉시 멈추는 상황 해제
+            const _ResolveEmergencySection(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// 공통: 서버 비상 상황 해제 버튼 (모든 사용자 푸시 즉시 중지)
+// ──────────────────────────────────────────────────────────
+class _ResolveEmergencySection extends StatefulWidget {
+  const _ResolveEmergencySection();
+
+  @override
+  State<_ResolveEmergencySection> createState() => _ResolveEmergencySectionState();
+}
+
+class _ResolveEmergencySectionState extends State<_ResolveEmergencySection> {
+  bool _resolving = false;
+  bool _sendingTest = false;
+
+  Future<void> _sendTest() async {
+    setState(() => _sendingTest = true);
+    final result = await ApiService.sendTestPush();
+    if (!mounted) return;
+    setState(() => _sendingTest = false);
+    print(result);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result), duration: const Duration(seconds: 4)),
+    );
+  }
+
+  Future<void> _resolve() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('상황 해제', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          '서버의 비상 상황을 해제합니다.\n모든 사용자에게 가던 푸시가 즉시 멈춥니다.',
+          style: TextStyle(color: AppColors.textMuted, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('해제', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _resolving = true);
+    final phone = await Session.getPhone();
+    final ok = await ApiService.resolveEmergency(phone);
+    if (!mounted) return;
+    setState(() => _resolving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? '상황을 해제했습니다. 푸시가 중지됩니다.' : '해제 실패. 서버 연결을 확인하세요.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.fieldBorder)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 테스트 푸시 — 서버에서 즉시 1회 발송(진단용)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accent,
+                side: const BorderSide(color: AppColors.accent, width: 1.4),
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _sendingTest ? null : _sendTest,
+              icon: _sendingTest
+                  ? const SizedBox(
+                      height: 20, width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))
+                  : const Icon(Icons.notifications_active_outlined, size: 20),
+              label: const Text('테스트 푸시 보내기',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 상황 해제 — 서버 비상(푸시) 즉시 중지
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                side: const BorderSide(color: AppColors.danger, width: 1.4),
+                minimumSize: const Size.fromHeight(54),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _resolving ? null : _resolve,
+              icon: _resolving
+                  ? const SizedBox(
+                      height: 20, width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.danger))
+                  : const Icon(Icons.notifications_off_outlined, size: 20),
+              label: const Text('상황 해제 (서버 푸시 중지)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            ),
+          ),
+        ],
       ),
     );
   }

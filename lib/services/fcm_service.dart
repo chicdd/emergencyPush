@@ -57,6 +57,7 @@ class FcmService {
     return initial != null && _isEmergency(initial);
   }
 
-  static bool _isEmergency(RemoteMessage m) =>
-      m.data['type'] == 'emergency' || m.notification != null;
+  /// 비상 푸시 여부 — data.type 이 'emergency' 일 때만 알람/비상 화면을 발동.
+  /// (테스트 푸시는 type='test' 라 여기에 해당하지 않는다.)
+  static bool _isEmergency(RemoteMessage m) => m.data['type'] == 'emergency';
 }

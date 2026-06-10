@@ -87,6 +87,26 @@ class ApiService {
     }
   }
 
+  /// 서버에서 테스트 푸시를 1회 발송. 진단용 결과 문구를 반환.
+  static Future<String> sendTestPush() async {
+    try {
+      final res = await http
+          .post(_u('/api/push/test'), headers: _jsonHeaders)
+          .timeout(_timeout);
+      if (res.statusCode == 200) {
+        final m = jsonDecode(res.body) as Map<String, dynamic>;
+        final msg = m['message']?.toString() ?? '요청 완료';
+        final success = m['success'] ?? 0;
+        final userCount = m['userCount'] ?? 0;
+        final available = m['fcmAvailable'] == true;
+        return '$msg (성공 $success/$userCount, FCM ${available ? "정상" : "비활성"})';
+      }
+      return '서버 오류 (${res.statusCode})';
+    } catch (_) {
+      return '서버 연결 실패';
+    }
+  }
+
   /// iOS 단축어가 호출할 ping URL(설정 화면에 표시/복사).
   static String pingUrl(String phone) => '${AppConfig.apiBaseUrl}/api/device/ping/$phone';
 }

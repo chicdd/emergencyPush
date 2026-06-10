@@ -16,6 +16,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<EmergencyService>();
 builder.Services.AddSingleton<FcmService>();
+builder.Services.AddSingleton<EmergencySignal>();
 
 // 백그라운드: 비상 시 1초마다 푸시 / 무수신 시 count 초기화
 builder.Services.AddHostedService<PushLoopHostedService>();

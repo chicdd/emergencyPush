@@ -72,10 +72,23 @@ public class FcmService
             {
                 Tokens = chunk,
                 Notification = new Notification { Title = title, Body = body },
-                Android = new AndroidConfig { Priority = Priority.High },
+                Android = new AndroidConfig
+                {
+                    Priority = Priority.High,
+                    Notification = new AndroidNotification
+                    {
+                        Sound = "default",                 // 소리 재생
+                        DefaultSound = true,
+                        ChannelId = "emergency_channel",   // 앱이 만든 고중요도(소리) 채널
+                        Priority = NotificationPriority.MAX,
+                        DefaultVibrateTimings = true,
+                    }
+                },
                 Apns = new ApnsConfig
                 {
-                    Aps = new Aps { Sound = "default", ContentAvailable = true }
+                    // content-available(무음 백그라운드) 제거 — 알림 사운드가 울리도록.
+                    Aps = new Aps { Sound = "default" },
+                    Headers = new Dictionary<string, string> { ["apns-priority"] = "10" }
                 },
                 Data = new Dictionary<string, string> { ["type"] = "emergency" }
             };

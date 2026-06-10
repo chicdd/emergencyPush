@@ -1,5 +1,6 @@
 using EmergencyPushApi.Data;
 using EmergencyPushApi.Models;
+using EmergencyPushApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +24,7 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Phone))
             return BadRequest(new { message = "휴대폰번호가 필요합니다." });
 
-        var now = DateTime.UtcNow;
+        var now = KoreaTime.Now;
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == req.Phone);
         if (user == null)
         {

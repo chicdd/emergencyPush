@@ -23,12 +23,15 @@ public class EmergencyService
 {
     private readonly AppDbContext _db;
     private readonly SettingsService _settings;
+    private readonly EmergencySignal _signal;
     private readonly ILogger<EmergencyService> _logger;
 
-    public EmergencyService(AppDbContext db, SettingsService settings, ILogger<EmergencyService> logger)
+    public EmergencyService(
+        AppDbContext db, SettingsService settings, EmergencySignal signal, ILogger<EmergencyService> logger)
     {
         _db = db;
         _settings = settings;
+        _signal = signal;
         _logger = logger;
     }
 
@@ -42,7 +45,7 @@ public class EmergencyService
     public async Task<MessageResult> RegisterIncomingAsync(
         string receiveId, string? sendId, string? message, bool markMaster)
     {
-        var now = DateTime.UtcNow;
+        var now = KoreaTime.Now;
 
         var threshold = await _settings.GetIntAsync(SettingKeys.TriggerThreshold, SettingKeys.DefaultThreshold);
         var windowSec = await _settings.GetIntAsync(SettingKeys.TriggerWindowSec, SettingKeys.DefaultWindowSec);
@@ -122,15 +125,20 @@ public class EmergencyService
         if (alreadyActive) return false;
 
         var pushMessage = await _settings.GetStringAsync(SettingKeys.PushMessage, SettingKeys.DefaultPushMessage);
+        var finalMessage = string.IsNullOrWhiteSpace(message) ? pushMessage : message;
 
         _db.EmergencyStates.Add(new EmergencyState
         {
             IsActive = true,
             TriggeredBy = triggeredBy,
-            Message = string.IsNullOrWhiteSpace(message) ? pushMessage : message,
+            Message = finalMessage,
             StartedAt = now
         });
         await _db.SaveChangesAsync();
+
+        // 폴링 없이 푸시 루프를 즉시 깨운다.
+        _signal.Activate(finalMessage, triggeredBy);
+
         _logger.LogWarning("비상 상황 발생. 트리거: {TriggeredBy}", triggeredBy);
         return true;
     }
@@ -140,7 +148,7 @@ public class EmergencyService
     /// <summary>모든 활성 비상을 해제한다(상황 확인/상황 해제). 푸시 루프가 즉시 멈춘다.</summary>
     public async Task<int> ResolveAllAsync(string? resolvedBy)
     {
-        var now = DateTime.UtcNow;
+        var now = KoreaTime.Now;
         var actives = await _db.EmergencyStates.Where(e => e.IsActive).ToListAsync();
         foreach (var e in actives)
         {
@@ -151,6 +159,7 @@ public class EmergencyService
         if (actives.Count > 0)
         {
             await _db.SaveChangesAsync();
+            _signal.Deactivate(); // 푸시 루프 즉시 정지
             _logger.LogInformation("비상 상황 {Count}건 해제. 해제자: {By}", actives.Count, resolvedBy ?? "(미상)");
         }
         return actives.Count;

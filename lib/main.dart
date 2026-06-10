@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'services/fcm_service.dart';
+import 'services/local_notifications.dart';
 import 'services/session.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
@@ -14,6 +15,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 알림 채널(소리 나는 비상 채널) 생성 — Firebase 초기화 전에 준비.
+  await LocalNotifications.init();
 
   try {
     await Firebase.initializeApp();

@@ -1,5 +1,16 @@
 name: emergencypush
 description: "비상상황에 푸시를 연속으로 보낸다."
+
+# 앱 아이콘 생성 설정 (dart run flutter_launcher_icons)
+# iOS / Android 동일한 소스 아이콘 적용.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true            # iOS 아이콘은 투명도 불가 → 평탄화
+  min_sdk_android: 23
+  adaptive_icon_background: "#05070A"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -51,6 +62,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

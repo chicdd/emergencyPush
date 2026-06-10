@@ -16,10 +16,21 @@ class FcmService {
   /// 권한 요청 후 FCM 등록 토큰을 반환(실패 시 null).
   static Future<String?> requestPermissionAndToken() async {
     try {
-      await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      return await _messaging.getToken();
-    } catch (e) {
-      debugPrint('FCM 토큰 획득 실패: $e');
+      final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
+      debugPrint('FCM 알림 권한: ${settings.authorizationStatus}');
+
+      // 포그라운드에서도 시스템 알림(배너+소리+뱃지) 표시
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final token = await _messaging.getToken();
+      debugPrint('FCM 토큰: $token');
+      return token;
+    } catch (e, st) {
+      debugPrint('FCM 토큰 획득 실패: $e\n$st');
       return null;
     }
   }

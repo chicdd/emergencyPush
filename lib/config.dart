@@ -2,18 +2,26 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// API 서버 주소.
-///
-/// .NET API 는 기본적으로 http://localhost:5048 에서 동작한다(launchSettings.json).
-/// - Android 에뮬레이터: 호스트 PC 의 localhost 는 10.0.2.2 로 접근.
-/// - iOS 시뮬레이터 / 데스크톱: localhost 그대로.
-/// 실기기에서 테스트할 때는 PC 의 LAN IP(예: http://192.168.0.10:5048)로 바꾸세요.
 class AppConfig {
-  static const int _port = 5048;
+  // ───────────────────────────────────────────────────────────
+  // ⚠️ 배포 서버 도메인 — 실제 도메인으로 바꾸세요. (HTTPS)
+  //    iPhone 단축어 "복사하기" URL 도 이 주소를 사용합니다.
+  static const String productionBaseUrl = 'https://emergencypush.neoworker.co.kr';
+  // ───────────────────────────────────────────────────────────
+
+  /// 로컬 개발용 스위치.
+  ///  - false(기본): 위 productionBaseUrl(배포 서버) 사용.
+  ///  - true       : 에뮬레이터/시뮬레이터에서 로컬 .NET API(localhost:5048) 사용.
+  static const bool useLocalDev = false;
+
+  static const int _devPort = 5048;
 
   static String get apiBaseUrl {
-    if (kIsWeb) return 'http://localhost:$_port';
-    if (Platform.isAndroid) return 'http://10.0.2.2:$_port';
-    return 'http://localhost:$_port';
+    if (!useLocalDev) return productionBaseUrl;
+    // 로컬 개발: Android 에뮬레이터는 호스트 localhost 를 10.0.2.2 로 접근.
+    if (kIsWeb) return 'http://localhost:$_devPort';
+    if (Platform.isAndroid) return 'http://10.0.2.2:$_devPort';
+    return 'http://localhost:$_devPort';
   }
 
   /// 인증 화면 비밀번호.

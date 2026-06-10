@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'services/api_service.dart';
 import 'services/fcm_service.dart';
 import 'services/session.dart';
 import 'screens/auth_screen.dart';
@@ -15,15 +16,24 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  bool firebaseReady = false;
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+    firebaseReady = true;
   } catch (e) {
     debugPrint('Firebase 초기화 실패(설정 확인 필요): $e');
   }
 
   final phone = await Session.getPhone();
-  final launchedFromEmergency = await FcmService.launchedFromEmergency();
+  final launchedFromEmergency =
+      firebaseReady ? await FcmService.launchedFromEmergency() : false;
+
+  // 이미 로그인된 경우에도 토큰을 갱신해 서버에 재등록
+  if (firebaseReady && phone != null) {
+    final token = await FcmService.requestPermissionAndToken();
+    if (token != null) await ApiService.register(phone, token);
+  }
 
   runApp(EmergencyPushApp(
     startLoggedIn: phone != null,

@@ -75,7 +75,12 @@ public class FcmService
                 Android = new AndroidConfig { Priority = Priority.High },
                 Apns = new ApnsConfig
                 {
-                    Aps = new Aps { Sound = "default", ContentAvailable = true }
+                    Headers = new Dictionary<string, string>
+                    {
+                        ["apns-priority"] = "10",       // 즉시 전달 (기본값 5는 지연/무음 처리 가능)
+                        ["apns-push-type"] = "alert",   // 알림 배너+소리 명시
+                    },
+                    Aps = new Aps { Sound = "default" }
                 },
                 Data = new Dictionary<string, string> { ["type"] = "emergency" }
             };

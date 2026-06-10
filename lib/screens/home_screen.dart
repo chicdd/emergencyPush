@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
 
@@ -15,6 +17,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  Timer? _healthTimer;
+  bool _serverUnreachable = false;
 
   @override
   void initState() {
@@ -24,10 +28,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+
+    _checkServer();
+    _healthTimer = Timer.periodic(const Duration(seconds: 30), (_) => _checkServer());
+  }
+
+  Future<void> _checkServer() async {
+    final ok = await ApiService.checkHealth();
+    if (mounted && ok != !_serverUnreachable) {
+      setState(() => _serverUnreachable = !ok);
+    }
   }
 
   @override
   void dispose() {
+    _healthTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -114,6 +129,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ],
             ),
           ),
+          // 서버 접속 실패 경고 배너
+          if (_serverUnreachable)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  color: const Color(0x4FFF0000),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  child: const Text(
+                    '서버 접속 실패\n비상 신호를 받지 못 합니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // 오른쪽 위 반투명 설정 아이콘
           Positioned(
             top: 0,

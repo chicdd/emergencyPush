@@ -2,8 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'services/api_service.dart';
 import 'services/fcm_service.dart';
-import 'services/local_notifications.dart';
 import 'services/session.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
@@ -16,18 +16,30 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 알림 채널(소리 나는 비상 채널) 생성 — Firebase 초기화 전에 준비.
-  await LocalNotifications.init();
-
+  bool firebaseReady = false;
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+    // 포그라운드에서도 배너+소리+뱃지 표시 (로그인 여부와 무관하게 항상 설정)
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    firebaseReady = true;
   } catch (e) {
     debugPrint('Firebase 초기화 실패(설정 확인 필요): $e');
   }
 
   final phone = await Session.getPhone();
-  final launchedFromEmergency = await FcmService.launchedFromEmergency();
+  final launchedFromEmergency =
+      firebaseReady ? await FcmService.launchedFromEmergency() : false;
+
+  // 이미 로그인된 경우에도 토큰을 갱신해 서버에 재등록
+  if (firebaseReady && phone != null) {
+    final token = await FcmService.requestPermissionAndToken();
+    if (token != null) await ApiService.register(phone, token);
+  }
 
   runApp(EmergencyPushApp(
     startLoggedIn: phone != null,

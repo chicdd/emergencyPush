@@ -20,6 +20,12 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+    // 포그라운드에서도 배너+소리+뱃지 표시 (로그인 여부와 무관하게 항상 설정)
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
     firebaseReady = true;
   } catch (e) {
     debugPrint('Firebase 초기화 실패(설정 확인 필요): $e');

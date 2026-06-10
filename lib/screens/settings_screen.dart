@@ -205,7 +205,7 @@ class _IosSettingsState extends State<_IosSettings> {
           child: SelectableText(
             _url.isEmpty ? '불러오는 중…' : _url,
             style: const TextStyle(
-              color: AppColors.accent,
+              color: AppColors.techBlue,
               fontFamily: 'monospace',
               fontSize: 13.5,
             ),
@@ -248,13 +248,13 @@ class _StepRow extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.accent.withValues(alpha: 0.15),
-              border: Border.all(color: AppColors.accent.withValues(alpha: 0.6)),
+              color: AppColors.techBlue.withValues(alpha: 0.15),
+              border: Border.all(color: AppColors.techBlue.withValues(alpha: 0.6)),
             ),
             child: Text(
               '$index',
               style: const TextStyle(
-                  color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
+                  color: AppColors.techBlue, fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 14),

@@ -9,7 +9,6 @@ import '../theme.dart';
 import 'home_screen.dart';
 
 /// 시작 화면: 휴대폰번호 + 비밀번호 + 인증 버튼.
-/// 비밀번호가 01579# 이면 홈으로, 틀리면 빨간 인증 실패 텍스트.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -19,8 +18,8 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _phoneCtrl = TextEditingController();
-  final _pwCtrl = TextEditingController();
-  bool _failed = false;
+  final _pwCtrl    = TextEditingController();
+  bool _failed  = false;
   bool _loading = false;
 
   @override
@@ -32,19 +31,15 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _authenticate() async {
     final phone = _phoneCtrl.text.trim();
-    final pw = _pwCtrl.text;
+    final pw    = _pwCtrl.text;
 
     if (pw != AppConfig.authPassword || phone.isEmpty) {
       setState(() => _failed = true);
       return;
     }
 
-    setState(() {
-      _failed = false;
-      _loading = true;
-    });
+    setState(() { _failed = false; _loading = true; });
 
-    // FCM 토큰 획득 후 서버에 휴대폰번호 + 토큰 등록
     final token = await FcmService.requestPermissionAndToken();
     await ApiService.register(phone, token);
     await Session.savePhone(phone);
@@ -62,8 +57,8 @@ class _AuthScreenState extends State<AuthScreen> {
         decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [Color(0xFF0B1622), AppColors.background],
+            radius: 1.4,
+            colors: [Color(0xFF1A000A), AppColors.background],
           ),
         ),
         child: SafeArea(
@@ -74,24 +69,54 @@ class _AuthScreenState extends State<AuthScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.shield_moon_outlined,
-                      size: 64, color: AppColors.accent),
-                  const SizedBox(height: 18),
+                  // 사이렌 아이콘 + 글로우
+                  Center(
+                    child: Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.accent.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.25),
+                            blurRadius: 30,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 48,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   const Text(
-                    'EMERGENCY PUSH',
+                    '비상 상황 알림',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 3,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    '비상상황 대응 시스템',
+                    'EMERGENCY ALERT SYSTEM',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textMuted, letterSpacing: 1),
+                    style: TextStyle(
+                      color: AppColors.techBlue,
+                      letterSpacing: 2,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 44),
                   TextField(
@@ -103,10 +128,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     ],
                     decoration: const InputDecoration(
                       hintText: '휴대폰번호',
-                      prefixIcon: Icon(Icons.smartphone, color: AppColors.textMuted),
+                      prefixIcon: Icon(Icons.smartphone_outlined, color: AppColors.textMuted),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   TextField(
                     controller: _pwCtrl,
                     obscureText: true,
@@ -124,8 +149,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2.4, color: Color(0xFF021016)),
+                            child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                           )
                         : const Text('인증'),
                   ),
@@ -136,7 +160,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: const Text(
                       '인증 실패',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.danger, fontSize: 12.5),
+                      style: TextStyle(color: AppColors.danger, fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],

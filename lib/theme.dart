@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// 어둡고 미래지향적인 검은색 계열 테마.
+/// 비상상황 알림 — 다크 + 사이렌 레드 + 테크 블루 테마.
 class AppColors {
-  static const Color background = Color(0xFF05070A); // 거의 검정
-  static const Color surface = Color(0xFF0E141B);
-  static const Color surfaceAlt = Color(0xFF131C26);
+  static const Color background  = Color(0xFF05070A); // 거의 검정
+  static const Color surface     = Color(0xFF0E141B);
+  static const Color surfaceAlt  = Color(0xFF131C26);
 
-  // 홈 화면 호흡 그라데이션(초록 ↔ 파랑)
-  static const Color breatheGreen = Color(0xFF00E6A8);
-  static const Color breatheBlue = Color(0xFF1E6BFF);
+  // 홈 화면 호흡 그라데이션 (빨강 ↔ 파랑)
+  static const Color breatheRed  = Color(0xFFFF1A2E); // 사이렌 레드
+  static const Color breatheBlue = Color(0xFF1E6BFF); // 테크 블루
 
-  static const Color accent = Color(0xFF35E0F0);
+  static const Color accent      = Color(0xFFFF1A2E); // 주요 액션 색상 (빨강)
+  static const Color techBlue    = Color(0xFF1E6BFF); // 보조 테크 색상 (파랑)
   static const Color textPrimary = Color(0xFFEAF2FF);
-  static const Color textMuted = Color(0xFF8A97A8);
-  static const Color danger = Color(0xFFFF2D55);
+  static const Color textMuted   = Color(0xFF8A97A8);
+  static const Color danger      = Color(0xFFFF1A2E);
 
-  static const Color fieldFill = Color(0xFF121A22);
-  static const Color fieldBorder = Color(0xFF243240);
+  static const Color fieldFill   = Color(0xFF0C1118);
+  static const Color fieldBorder = Color(0xFF1E2D3D);
 }
 
 ThemeData buildAppTheme() {
@@ -26,7 +27,7 @@ ThemeData buildAppTheme() {
     colorScheme: base.colorScheme.copyWith(
       brightness: Brightness.dark,
       primary: AppColors.accent,
-      secondary: AppColors.breatheGreen,
+      secondary: AppColors.techBlue,
       surface: AppColors.surface,
       error: AppColors.danger,
     ),
@@ -46,17 +47,28 @@ ThemeData buildAppTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
+        borderSide: const BorderSide(color: AppColors.techBlue, width: 1.6),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.accent,
-        foregroundColor: const Color(0xFF021016),
+        foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(54),
         textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 1.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleTextStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 2,
+      ),
+      iconTheme: IconThemeData(color: AppColors.textPrimary),
     ),
   );
 }

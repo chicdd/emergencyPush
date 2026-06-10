@@ -4,7 +4,9 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Critical Alerts: Apple 승인 후 주석 해제
 	<key>com.apple.developer.usernotifications.critical-alerts</key>
 	<true/>
+	-->
 </dict>
 </plist>

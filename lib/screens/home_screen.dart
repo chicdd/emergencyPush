@@ -6,8 +6,7 @@ import '../services/api_service.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
 
-/// 홈 화면: '정상' 텍스트 + 초록↔파랑 호흡(breathing) 그라데이션 애니메이션.
-/// 오른쪽 위 반투명 설정(gear) 아이콘.
+/// 홈 화면: '정상' + 레이더 링 + 레드↔블루 호흡 애니메이션.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -15,19 +14,24 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  late final AnimationController _breathe; // 4초 호흡
+  late final AnimationController _radar;   // 3초 레이더 링
   Timer? _healthTimer;
   bool _serverUnreachable = false;
 
   @override
   void initState() {
     super.initState();
-    // 4초 주기로 부드럽게 들숨/날숨 반복
-    _controller = AnimationController(
+    _breathe = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+
+    _radar = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    )..repeat();
 
     _checkServer();
     _healthTimer = Timer.periodic(const Duration(seconds: 30), (_) => _checkServer());
@@ -43,7 +47,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _healthTimer?.cancel();
-    _controller.dispose();
+    _breathe.dispose();
+    _radar.dispose();
     super.dispose();
   }
 
@@ -53,49 +58,50 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
+          // 레이더 링 (배경)
           Positioned.fill(
             child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                // 0→1→0 사인 곡선으로 색/크기 보간 (호흡 느낌)
-                final t = (math.sin(_controller.value * math.pi * 2 - math.pi / 2) + 1) / 2;
-                final color = Color.lerp(AppColors.breatheBlue, AppColors.breatheGreen, t)!;
-                final scale = 0.82 + 0.18 * t;
-                final glow = 0.30 + 0.45 * t;
-
+              animation: _radar,
+              builder: (_, __) => CustomPaint(
+                painter: _RadarPainter(
+                  progress: _radar.value,
+                  color: AppColors.breatheBlue,
+                ),
+              ),
+            ),
+          ),
+          // 호흡 오브 (중앙 글로우)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _breathe,
+              builder: (_, __) {
+                final t = (math.sin(_breathe.value * math.pi * 2 - math.pi / 2) + 1) / 2;
+                final color = Color.lerp(AppColors.breatheBlue, AppColors.breatheRed, t)!;
+                final scale = 0.78 + 0.20 * t;
+                final glow  = 0.28 + 0.42 * t;
                 return Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [
-                          AppColors.background,
-                          AppColors.background,
-                        ],
-                      ),
-                    ),
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: 300,
-                        height: 300,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              color.withValues(alpha: 0.95),
-                              color.withValues(alpha: 0.18),
-                              AppColors.background.withValues(alpha: 0.0),
-                            ],
-                            stops: const [0.0, 0.55, 1.0],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withValues(alpha: glow),
-                              blurRadius: 120,
-                              spreadRadius: 40,
-                            ),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            color.withValues(alpha: 0.90),
+                            color.withValues(alpha: 0.15),
+                            AppColors.background.withValues(alpha: 0.0),
                           ],
+                          stops: const [0.0, 0.50, 1.0],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: glow),
+                            blurRadius: 130,
+                            spreadRadius: 45,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -103,8 +109,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               },
             ),
           ),
-          // 중앙 '정상' 텍스트
-          const Center(
+          // 중앙 텍스트
+          Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -112,24 +118,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   '정상',
                   style: TextStyle(
                     fontSize: 52,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 10,
                     color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: AppColors.breatheRed.withValues(alpha: 0.6),
+                        blurRadius: 20,
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 8),
-                Text(
+                const SizedBox(height: 8),
+                const Text(
                   'SYSTEM NORMAL',
                   style: TextStyle(
                     fontSize: 12,
-                    letterSpacing: 4,
-                    color: Color(0xFFB8C6D8),
+                    letterSpacing: 5,
+                    color: AppColors.techBlue,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          // 서버 접속 실패 경고 배너
+          // 서버 접속 실패 배너
           if (_serverUnreachable)
             Positioned(
               top: 0,
@@ -138,22 +151,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               child: SafeArea(
                 bottom: false,
                 child: Container(
-                  color: const Color(0x4FFF0000),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.danger.withValues(alpha: 0.85),
+                        AppColors.danger.withValues(alpha: 0.60),
+                      ],
+                    ),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   child: const Text(
-                    '서버 접속 실패\n비상 신호를 받지 못 합니다.',
+                    '서버 접속 실패 — 비상 신호를 받지 못합니다.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 1.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
               ),
             ),
-          // 오른쪽 위 반투명 설정 아이콘
+          // 설정 버튼
           Positioned(
             top: 0,
             right: 0,
@@ -163,15 +183,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 child: IconButton(
                   tooltip: '설정',
                   icon: Icon(
-                    Icons.settings,
+                    Icons.settings_outlined,
                     size: 28,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withValues(alpha: 0.45),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    );
-                  },
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
                 ),
               ),
             ),
@@ -180,4 +198,51 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
   }
+}
+
+/// 레이더/소나 링 페인터 — 3개의 링이 중심에서 바깥으로 퍼짐.
+class _RadarPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _RadarPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width * 0.46;
+
+    for (int i = 0; i < 3; i++) {
+      final phase = (progress + i / 3) % 1.0;
+      final radius = maxRadius * phase;
+      final opacity = (1.0 - phase) * 0.5;
+
+      final paint = Paint()
+        ..color = color.withValues(alpha: opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2;
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 바깥 테두리 링 (고정, 흐린 파랑)
+    final borderPaint = Paint()
+      ..color = color.withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(center, maxRadius, borderPaint);
+
+    // 테두리 링 위 점 장식 (12개)
+    final dotPaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+    for (int d = 0; d < 12; d++) {
+      final angle = d * math.pi * 2 / 12;
+      final dx = center.dx + maxRadius * math.cos(angle);
+      final dy = center.dy + maxRadius * math.sin(angle);
+      canvas.drawCircle(Offset(dx, dy), 2.5, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RadarPainter old) => old.progress != progress;
 }

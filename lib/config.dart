@@ -35,7 +35,4 @@ class AppConfig {
         return 'http://localhost:$_devPort';
     }
   }
-
-  /// 인증 화면 비밀번호.
-  static const String authPassword = '01579#';
 }

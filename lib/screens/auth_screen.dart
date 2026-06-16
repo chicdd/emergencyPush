@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../config.dart';
 import '../services/api_service.dart';
 import '../services/fcm_service.dart';
 import '../services/session.dart';
 import '../theme.dart';
 import 'home_screen.dart';
 
-/// 시작 화면: 휴대폰번호 + 비밀번호 + 인증 버튼.
+/// 시작 화면: 휴대폰번호 입력 → 가입.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -18,22 +17,19 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _phoneCtrl = TextEditingController();
-  final _pwCtrl    = TextEditingController();
   bool _failed  = false;
   bool _loading = false;
 
   @override
   void dispose() {
     _phoneCtrl.dispose();
-    _pwCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _authenticate() async {
     final phone = _phoneCtrl.text.trim();
-    final pw    = _pwCtrl.text;
 
-    if (pw != AppConfig.authPassword || phone.isEmpty) {
+    if (phone.isEmpty) {
       setState(() => _failed = true);
       return;
     }
@@ -130,16 +126,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       hintText: '휴대폰번호',
                       prefixIcon: Icon(Icons.smartphone_outlined, color: AppColors.textMuted),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _pwCtrl,
-                    obscureText: true,
-                    style: const TextStyle(color: AppColors.textPrimary, letterSpacing: 3),
-                    decoration: const InputDecoration(
-                      hintText: '비밀번호',
-                      prefixIcon: Icon(Icons.lock_outline, color: AppColors.textMuted),
-                    ),
                     onSubmitted: (_) => _authenticate(),
                   ),
                   const SizedBox(height: 24),
@@ -151,14 +137,14 @@ class _AuthScreenState extends State<AuthScreen> {
                             width: 22,
                             child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                           )
-                        : const Text('인증'),
+                        : const Text('시작하기'),
                   ),
                   const SizedBox(height: 10),
                   AnimatedOpacity(
                     opacity: _failed ? 1 : 0,
                     duration: const Duration(milliseconds: 180),
                     child: const Text(
-                      '인증 실패',
+                      '휴대폰번호를 입력해 주세요',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.danger, fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),

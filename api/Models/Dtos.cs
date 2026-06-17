@@ -4,6 +4,8 @@ public record RegisterRequest(string Phone, string? FirebaseToken);
 
 public record MasterRequest(string Id);
 
+public record PingRequest(string? Message);
+
 public record IncomingMessageRequest(string ReceiveId, string? SendId, string? Message);
 
 public record ResolveRequest(string? Phone);

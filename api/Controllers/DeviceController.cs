@@ -2,6 +2,7 @@ using EmergencyPushApi.Data;
 using EmergencyPushApi.Models;
 using EmergencyPushApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmergencyPushApi.Controllers;
@@ -20,14 +21,18 @@ public class DeviceController : ControllerBase
     }
 
     /// <summary>
-    /// iOS 단축어용 ping. 메시지 수신 시 단축어가 이 URL(GET)을 호출한다.
+    /// iOS 단축어/모니터링 hook 용 ping(POST). 메시지 수신 시 이 URL 을 호출한다.
     /// 해당 회선을 master 로 표시하고 count 를 증가시키며 트리거를 판정한다.
-    /// 단축어가 본문을 보내기 어려우므로 회선 식별은 경로 파라미터로 받는다.
+    /// 회선 식별은 경로 파라미터로, 메시지는 JSON 본문({"message":"..."})으로 받는다.
+    /// (공백·'/' 등 특수문자가 URL 에서 끊기지 않도록 본문으로 받는다.)
+    /// 본문이 없으면 메시지 없이 카운트만 증가한다. message 는 ReceiveMessageLog.Message 컬럼에 저장된다.
     /// </summary>
-    [HttpGet("ping/{id}")]
-    public async Task<IActionResult> Ping(string id)
+    [HttpPost("ping/{id}")]
+    public async Task<IActionResult> Ping(
+        string id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PingRequest? body = null)
     {
-        var result = await _emergency.RegisterIncomingAsync(id, sendId: null, message: null, markMaster: true);
+        var result = await _emergency.RegisterIncomingAsync(id, sendId: null, message: body?.Message, markMaster: true);
         // 단축어 친화적 평문 응답
         return Content($"OK count={result.CurrentCount} triggered={result.Triggered}", "text/plain");
     }

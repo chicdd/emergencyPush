@@ -74,7 +74,7 @@
    Flutter (정상/비상 화면, 알람음, 상황 해제)
 ```
 
-- **수신 경로 2가지**: iOS는 단축어가 `GET /api/device/ping/{회선번호}` 호출, Android는 앱이 SMS를 `POST /api/message/incoming`으로 포워딩.
+- **수신 경로 2가지**: iOS는 단축어가 `POST /api/device/ping/{회선번호}` 호출, Android는 앱이 SMS를 `POST /api/message/incoming`으로 포워딩.
 - **트리거 판정**은 서버 `EmergencyService`가 수행, 발송은 `PushLoopHostedService`(백그라운드)가 담당.
 - 비상 상태는 **메모리 신호(`EmergencySignal`)** 로 공유 → 평상시 DB 폴링 0.
 
@@ -260,7 +260,7 @@ END
 | Method | Path | 설명 |
 |---|---|---|
 | POST | `/api/auth/register` | 휴대폰번호 + FCM 토큰 등록(upsert) |
-| GET  | `/api/device/ping/{id}` | iOS 단축어 hook (메시지 수신 보고, 해당 회선 master 표시) |
+| POST | `/api/device/ping/{id}` | iOS 단축어/모니터링 hook (메시지 수신 보고, 해당 회선 master 표시). `message` 는 JSON 본문(`{"message":"..."}`) |
 | POST | `/api/device/master` | Android "메시지 파싱 대상" 저장 (`is_master=true`) |
 | GET  | `/api/device/configs` | 등록된 모니터링 회선 목록 |
 | GET  | `/api/device/config/{id}` | 특정 회선 설정 조회 |

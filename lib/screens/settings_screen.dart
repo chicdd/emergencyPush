@@ -42,8 +42,9 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          // ── 로그아웃 (최하단) ──
+          // ── 로그아웃 / 계정삭제 (최하단) ──
           const _LogoutSection(),
+          const _DeleteAccountSection(),
         ],
       ),
     );
@@ -452,7 +453,7 @@ class _LogoutSectionState extends State<_LogoutSection> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.fieldBorder)),
       ),
@@ -469,6 +470,133 @@ class _LogoutSectionState extends State<_LogoutSection> {
                 child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.danger))
             : const Icon(Icons.logout_rounded, size: 20),
         label: const Text('로그아웃',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// 계정 삭제 섹션
+// ──────────────────────────────────────────────────────────
+class _DeleteAccountSection extends StatefulWidget {
+  const _DeleteAccountSection();
+
+  @override
+  State<_DeleteAccountSection> createState() => _DeleteAccountSectionState();
+}
+
+class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
+  bool _loading = false;
+
+  /// 숫자만 남겨 비교(하이픈/공백 무시).
+  String _digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+
+  Future<void> _deleteAccount() async {
+    final phone = await Session.getPhone();
+    if (!mounted) return;
+    if (phone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보를 찾을 수 없습니다.')),
+      );
+      return;
+    }
+
+    final inputCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        bool matched = false;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('계정 삭제', style: TextStyle(color: AppColors.textPrimary)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  '정말 계정을 삭제하시겠습니까?\n현재 사용자의 휴대폰번호를 입력해주세요.',
+                  style: TextStyle(color: AppColors.textMuted, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: inputCtrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: AppColors.textPrimary, letterSpacing: 1),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]')),
+                  ],
+                  onChanged: (v) =>
+                      setLocal(() => matched = _digits(v) == _digits(phone)),
+                  decoration: const InputDecoration(
+                    hintText: '휴대폰번호 입력',
+                    prefixIcon: Icon(Icons.smartphone_outlined, color: AppColors.textMuted),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소', style: TextStyle(color: AppColors.textMuted)),
+              ),
+              TextButton(
+                onPressed: matched ? () => Navigator.pop(ctx, true) : null,
+                child: Text(
+                  '계정삭제',
+                  style: TextStyle(
+                    color: matched ? AppColors.danger : AppColors.textMuted.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (confirmed != true) return;
+
+    setState(() => _loading = true);
+    final ok = await ApiService.deleteAccount(phone);
+    if (!mounted) return;
+
+    if (!ok) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('계정 삭제 실패. 서버 연결을 확인하세요.')),
+      );
+      return;
+    }
+
+    await Session.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthScreen()),
+      (_) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+      child: TextButton.icon(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.danger,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        onPressed: _loading ? null : _deleteAccount,
+        icon: _loading
+            ? const SizedBox(
+                height: 20, width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.danger))
+            : const Icon(Icons.delete_forever_outlined, size: 20),
+        label: const Text('계정 삭제',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
       ),
     );

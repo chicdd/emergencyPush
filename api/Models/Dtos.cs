@@ -2,6 +2,8 @@ namespace EmergencyPushApi.Models;
 
 public record RegisterRequest(string Phone, string? FirebaseToken);
 
+public record DeleteAccountRequest(string Phone);
+
 public record MasterRequest(string Id);
 
 public record PingRequest(string? Message);

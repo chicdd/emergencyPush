@@ -47,4 +47,23 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(new { message = "등록 완료", phone = user.Id });
     }
+
+    /// <summary>
+    /// 계정 삭제. 휴대폰번호로 식별되는 사용자 레코드를 영구 삭제한다.
+    /// (App Store 가이드라인 5.1.1(v) 계정 삭제 요구사항)
+    /// </summary>
+    [HttpPost("delete")]
+    public async Task<IActionResult> Delete([FromBody] DeleteAccountRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Phone))
+            return BadRequest(new { message = "휴대폰번호가 필요합니다." });
+
+        var users = await _db.Users.Where(u => u.Id == req.Phone).ToListAsync();
+        if (users.Count == 0)
+            return NotFound(new { message = "해당 사용자를 찾을 수 없습니다." });
+
+        _db.Users.RemoveRange(users);
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "계정이 삭제되었습니다.", phone = req.Phone });
+    }
 }

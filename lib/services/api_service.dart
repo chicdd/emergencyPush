@@ -39,6 +39,19 @@ class ApiService {
     }
   }
 
+  /// 계정 삭제: 서버에서 사용자 레코드를 영구 삭제.
+  static Future<bool> deleteAccount(String phone) async {
+    try {
+      final res = await http
+          .post(_u('/api/auth/delete'),
+              headers: _jsonHeaders, body: jsonEncode({'phone': phone}))
+          .timeout(_timeout);
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 안드로이드 "메시지 파싱 대상" 저장(is_master=true).
   static Future<bool> setMaster(String id) async {
     try {

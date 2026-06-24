@@ -9,6 +9,7 @@ import '../services/session.dart';
 import '../theme.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
+import 'situation_home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -62,9 +63,18 @@ class _SplashScreenState extends State<SplashScreen>
       if (token != null) await ApiService.register(phone, token);
     }
 
+    Widget next;
+    if (phone == null) {
+      next = const AuthScreen();
+    } else {
+      final status = await ApiService.getStatus();
+      next = status?['acknowledged'] == true
+          ? const SituationHomeScreen()
+          : const HomeScreen();
+    }
+
     if (!mounted) return;
 
-    final next = phone != null ? const HomeScreen() : const AuthScreen();
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => next,

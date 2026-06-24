@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
+import '../services/fcm_service.dart';
+import '../services/local_notifications.dart';
 import '../services/session.dart';
 import '../theme.dart';
+import 'situation_home.dart';
 
 /// 비상 상황 화면.
 /// - 레이더 링이 빠르게 퍼져나가며 사이렌 아이콘 회전.
@@ -18,27 +21,58 @@ class EmergencyScreen extends StatefulWidget {
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
-class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderStateMixin {
+class _EmergencyScreenState extends State<EmergencyScreen>
+    with TickerProviderStateMixin {
   late final AnimationController _spin;
   late final AnimationController _pulse;
   late final AnimationController _radar;
   Timer? _pollTimer;
   bool _resolving = false;
-
+  String? _emergencyMessage;
   @override
   void initState() {
     super.initState();
-    _spin  = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
-    _radar = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
+    _spin = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _radar = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat();
 
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkResolved());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkResolved(),
+    );
   }
 
   Future<void> _checkResolved() async {
-    final active = await ApiService.isEmergencyActive();
-    if (!active && mounted) Navigator.of(context).pop();
+    // ApiService의 getStatus()를 직접 호출해서 맵 데이터를 가져옴
+    final statusMap = await ApiService.getStatus();
+
+    if (statusMap == null) return; // 통신 실패 시 예외 처리
+
+    final bool active = statusMap['active'] == true;
+
+    if (!active && mounted) {
+      // 해제 상태면 이동
+      await LocalNotifications.stopEmergencyAlert(); //비상 울리지 않게함
+      FcmService.resetEmergencyHandling();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SituationHomeScreen()),
+      );
+    } else if (active && mounted) {
+      // 유지 상태면 맵에서 바로 메시지 꺼내기 (서버 요청 중복 방지)
+      setState(() {
+        _emergencyMessage = statusMap['메시지내용'] as String?;
+      });
+    }
   }
 
   @override
@@ -54,8 +88,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
     setState(() => _resolving = true);
     final phone = await Session.getPhone();
     await ApiService.resolveEmergency(phone);
+    await LocalNotifications.stopEmergencyAlert();
+    FcmService.resetEmergencyHandling();
     if (!mounted) return;
-    Navigator.of(context).pop();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const SituationHomeScreen()),
+    );
   }
 
   @override
@@ -67,8 +105,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
         body: AnimatedBuilder(
           animation: _pulse,
           builder: (_, child) {
-            final t  = Curves.easeInOut.transform(_pulse.value);
-            final bg = Color.lerp(const Color(0xFF150008), const Color(0xFF6B0015), t)!;
+            final t = Curves.easeInOut.transform(_pulse.value);
+            final bg = Color.lerp(
+              const Color(0xFF150008),
+              const Color(0xFF6B0015),
+              t,
+            )!;
             return Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
@@ -86,7 +128,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                 Positioned.fill(
                   child: AnimatedBuilder(
                     animation: _radar,
-                    builder: (_, __) => CustomPaint(
+                    builder: (context, child) => CustomPaint(
                       painter: _EmergencyRadarPainter(progress: _radar.value),
                     ),
                   ),
@@ -121,7 +163,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                     // 회전 사이렌 아이콘
                     AnimatedBuilder(
                       animation: Listenable.merge([_spin, _pulse]),
-                      builder: (_, __) {
+                      builder: (context, child) {
                         final glow = 0.45 + 0.55 * _pulse.value;
                         return Stack(
                           alignment: Alignment.center,
@@ -134,7 +176,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.danger.withValues(alpha: glow),
+                                    color: AppColors.danger.withValues(
+                                      alpha: glow,
+                                    ),
                                     blurRadius: 100,
                                     spreadRadius: 30,
                                   ),
@@ -148,7 +192,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.danger.withValues(alpha: 0.3),
+                                  color: AppColors.danger.withValues(
+                                    alpha: 0.3,
+                                  ),
                                   width: 1.2,
                                 ),
                               ),
@@ -167,8 +213,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                       },
                     ),
                     const SizedBox(height: 44),
-                    const Text(
-                      '캡스 보라매 신호 미상승 감지',
+                    Text(
+                      _emergencyMessage ?? '메세지 로드 실패',
                       style: TextStyle(
                         color: Color(0xFFFFC9D2),
                         fontSize: 14,
@@ -186,7 +232,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                             foregroundColor: AppColors.danger,
                             minimumSize: const Size.fromHeight(60),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           onPressed: _resolving ? null : _resolve,
                           child: _resolving
@@ -194,13 +241,17 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                                   height: 24,
                                   width: 24,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2.6, color: AppColors.danger))
+                                    strokeWidth: 2.6,
+                                    color: AppColors.danger,
+                                  ),
+                                )
                               : const Text(
                                   '상황 해제',
                                   style: TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 4),
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 4,
+                                  ),
                                 ),
                         ),
                       ),

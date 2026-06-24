@@ -1,6 +1,7 @@
 using EmergencyPushApi.Data;
 using EmergencyPushApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 
 namespace EmergencyPushApi.Services;
 
@@ -43,69 +44,74 @@ public class EmergencyService
     /// <param name="message">메시지 본문(있으면)</param>
     /// <param name="markMaster">이 회선을 master 로 표시할지(iOS ping 설정 시 true)</param>
     public async Task<MessageResult> RegisterIncomingAsync(
-        string receiveId, string? sendId, string? message, bool markMaster)
+        string? receiveId, string? sendId, string? message, bool markMaster)
     {
         var now = KoreaTime.Now;
 
         var threshold = await _settings.GetIntAsync(SettingKeys.TriggerThreshold, SettingKeys.DefaultThreshold);
         var windowSec = await _settings.GetIntAsync(SettingKeys.TriggerWindowSec, SettingKeys.DefaultWindowSec);
         var resetMin = await _settings.GetIntAsync(SettingKeys.CountResetMinutes, SettingKeys.DefaultResetMinutes);
+        var 상황확인여부 =  await _settings.GetIntAsync(SettingKeys.상황확인여부, SettingKeys.Default상황확인여부);
+       
 
         // 1) 모니터링 설정(config) 로드/생성
-        var config = await _db.DeviceSyncConfigs.FirstOrDefaultAsync(c => c.Id == receiveId);
+        var config = await _db._기기동기화설정.FirstOrDefaultAsync(c => c.Id == receiveId);
         if (config == null)
         {
-            config = new DeviceSyncConfig { Id = receiveId, IsMaster = markMaster, Count = 0 };
-            _db.DeviceSyncConfigs.Add(config);
+            config = new 기기동기화설정 { Id = NormalizePhoneNumber(receiveId), 메인여부 = markMaster, 메시지큐 = 0 };
+            _db._기기동기화설정.Add(config);
         }
-        else if (markMaster && !config.IsMaster)
+        else if (markMaster && !config.메인여부)
         {
-            config.IsMaster = true;
+            config.메인여부 = true;
         }
+
 
         // is_master 가 아니면 로그만 남기고 트리거 판정은 하지 않는다(스펙: master 회선만 감지).
         // 단, 수신 사실은 항상 기록.
-        _db.ReceiveMessageLogs.Add(new ReceiveMessageLog
+        _db._수신메시지내역.Add(new 수신메시지내역
         {
-            SendId = sendId ?? receiveId,
-            ReceiveId = receiveId,
-            Message = message,
-            Date = now
+            발신휴대폰번호 = sendId ?? "알수없는 발신자",
+            수신휴대폰번호 = receiveId ?? "알수없는 수신자",
+            메시지내용 = message,
+            수신시각 = now
         });
 
-        if (!config.IsMaster)
+
+
+        if (!config.메인여부 || 상황확인여부 == 1)
         {
             await _db.SaveChangesAsync();
-            return new MessageResult(config.Count, false, await IsEmergencyActiveAsync());
+            return new MessageResult(config.메시지큐, false, await IsEmergencyActiveAsync());
         }
 
         // 2) 10분간 무수신이면 누적 count 초기화 (규칙 3)
-        if (config.LastMessageAt.HasValue && (now - config.LastMessageAt.Value).TotalMinutes > resetMin)
+        if (config.최종메시지시각.HasValue && (now - config.최종메시지시각.Value).TotalMinutes > resetMin)
         {
-            config.Count = 0;
-            config.WindowStartAt = null;
+            config.메시지큐 = 0;
+            config.큐시작시각 = null;
         }
 
         // 3) 표시용 누적 count: 1분 윈도우 단위로 증가
-        if (config.WindowStartAt == null || (now - config.WindowStartAt.Value).TotalSeconds > windowSec)
+        if (config.큐시작시각 == null || (now - config.큐시작시각.Value).TotalSeconds > windowSec)
         {
-            config.WindowStartAt = now;
-            config.Count = 1;
+            config.큐시작시각 = now;
+            config.메시지큐 = 1;
         }
         else
         {
-            config.Count += 1;
+            config.메시지큐 += 1;
         }
-        config.LastMessageAt = now;
+        config.최종메시지시각 = now;
 
         await _db.SaveChangesAsync(); // 방금 로그가 윈도우 집계에 포함되도록 먼저 저장
 
         // 4) 권위 있는 트리거 판정: 슬라이딩 1분 윈도우, (회선, 발신자)별 집계
         var windowStart = now.AddSeconds(-windowSec);
-        var q = _db.ReceiveMessageLogs.AsNoTracking()
-            .Where(l => l.ReceiveId == receiveId && l.Date >= windowStart);
+        var q = _db._수신메시지내역.AsNoTracking()
+            .Where(l => l.수신휴대폰번호 == receiveId && l.수신시각 >= windowStart);
         if (!string.IsNullOrEmpty(sendId))
-            q = q.Where(l => l.SendId == sendId);
+            q = q.Where(l => l.발신휴대폰번호 == sendId);
 
         var windowCount = await q.CountAsync();
 
@@ -115,66 +121,126 @@ public class EmergencyService
             triggered = await StartEmergencyIfNeededAsync(sendId ?? receiveId, message, now);
         }
 
-        return new MessageResult(config.Count, triggered, await IsEmergencyActiveAsync());
+        return new MessageResult(config.메시지큐, triggered, await IsEmergencyActiveAsync());
     }
 
     /// <summary>활성 비상이 없으면 새로 시작. 이미 활성이면 false.</summary>
-    private async Task<bool> StartEmergencyIfNeededAsync(string triggeredBy, string? message, DateTime now)
+    private async Task<bool> StartEmergencyIfNeededAsync(string 최초휴대폰번호, string? 메시지내용, DateTime now)
     {
-        var alreadyActive = await _db.EmergencyStates.AnyAsync(e => e.IsActive);
-        if (alreadyActive) return false;
+        var 상황여부 = await _db._비상발생내역.AnyAsync(e => e.상황여부);
+        if (상황여부) return false;
 
-        var pushMessage = await _settings.GetStringAsync(SettingKeys.PushMessage, SettingKeys.DefaultPushMessage);
-        var finalMessage = string.IsNullOrWhiteSpace(message) ? pushMessage : message;
+        var 푸시메시지 = await _settings.GetStringAsync(SettingKeys.PushMessage, SettingKeys.DefaultPushMessage);
+        var 최종메시지 = string.IsNullOrWhiteSpace(메시지내용) ? 푸시메시지 : 메시지내용;
 
-        _db.EmergencyStates.Add(new EmergencyState
+        _db._비상발생내역.Add(new 비상발생내역
         {
-            IsActive = true,
-            TriggeredBy = triggeredBy,
-            Message = finalMessage,
-            StartedAt = now
+            상황여부 = true,
+            최초휴대폰번호 = 최초휴대폰번호,
+            메시지내용 = 최종메시지,
+            발생시각 = now
         });
         await _db.SaveChangesAsync();
 
         // 폴링 없이 푸시 루프를 즉시 깨운다.
-        _signal.Activate(finalMessage, triggeredBy);
+        _signal.Activate(최종메시지, 최초휴대폰번호);
 
-        _logger.LogWarning("비상 상황 발생. 트리거: {TriggeredBy}", triggeredBy);
+        _logger.LogWarning("비상 상황 발생. 트리거: {최초휴대폰번호}", 최초휴대폰번호);
         return true;
     }
 
-    private Task<bool> IsEmergencyActiveAsync() => _db.EmergencyStates.AnyAsync(e => e.IsActive);
+    //비상상황 활성 여부
+    private Task<bool> IsEmergencyActiveAsync() => _db._비상발생내역.AnyAsync(e => e.상황여부);
 
-    /// <summary>모든 활성 비상을 해제한다(상황 확인/상황 해제). 푸시 루프가 즉시 멈춘다.</summary>
+    /// <summary>
+    /// 모든 활성 비상을 해제한다(상황 확인/상황 해제). 푸시 루프가 즉시 멈춘다.
+    /// 동시에 [환경설정].상황확인여부 를 1로 세워, 재무장(<see cref="ArmAsync"/>) 전까지
+    /// RegisterIncomingAsync 가 새 비상을 재트리거하지 않도록 잠근다.
+    /// </summary>
     public async Task<int> ResolveAllAsync(string? resolvedBy)
     {
         var now = KoreaTime.Now;
-        var actives = await _db.EmergencyStates.Where(e => e.IsActive).ToListAsync();
+        var actives = await _db._비상발생내역.Where(e => e.상황여부).ToListAsync();
         foreach (var e in actives)
         {
-            e.IsActive = false;
-            e.ResolvedAt = now;
-            e.ResolvedBy = resolvedBy;
+            e.상황여부 = false;
+            e.해제시각 = now;
+            e.해제휴대폰번호 = resolvedBy;
         }
+
         if (actives.Count > 0)
         {
+            await SetAcknowledgedAsync(true);
             await _db.SaveChangesAsync();
             _signal.Deactivate(); // 푸시 루프 즉시 정지
             _logger.LogInformation("비상 상황 {Count}건 해제. 해제자: {By}", actives.Count, resolvedBy ?? "(미상)");
         }
         return actives.Count;
     }
+    
+
+
+    /// <summary>
+    /// 재무장. [환경설정].상황확인여부 를 0으로 되돌려, 다음 비상을 다시 감지할 수 있게 한다.
+    /// </summary>
+    public async Task ArmAsync(string? armedBy)
+    {
+        await SetAcknowledgedAsync(false);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("비상 감지 재무장(Arm). 처리자: {By}", armedBy ?? "(미상)");
+    }
+
+    
+
+
+    /// <summary>[환경설정].상황확인여부 값을 세팅(행이 없으면 생성). SaveChanges 는 호출자가 한다.</summary>
+    private async Task SetAcknowledgedAsync(bool acknowledged)
+    {
+        var setting = await _db._환경설정.FirstOrDefaultAsync(e => e.키 == SettingKeys.상황확인여부);
+        if (setting == null)
+        {
+            setting = new 환경설정 { 키 = SettingKeys.상황확인여부 };
+            _db._환경설정.Add(setting);
+        }
+        setting.값 = acknowledged ? "1" : "0";
+    }
 
     public async Task<EmergencyStatusResponse> GetStatusAsync()
     {
-        var active = await _db.EmergencyStates.AsNoTracking()
-            .Where(e => e.IsActive)
-            .OrderByDescending(e => e.StartedAt)
+        var active = await _db._비상발생내역.AsNoTracking()
+            .Where(e => e.상황여부)
+            .OrderByDescending(e => e.발생시각)
             .FirstOrDefaultAsync();
 
-        if (active != null)
-            return new EmergencyStatusResponse(true, active.TriggeredBy, active.Message, active.StartedAt);
+        var acknowledged = await _settings.GetIntAsync(SettingKeys.상황확인여부, SettingKeys.Default상황확인여부) == 1;
 
-        return new EmergencyStatusResponse(false, null, null, null);
+        if (active != null)
+            return new EmergencyStatusResponse(true, active.최초휴대폰번호, active.메시지내용, active.발생시각, acknowledged);
+
+        return new EmergencyStatusResponse(false, null, null, null, acknowledged);
+    }
+
+
+    // 전화번호 정규화 유틸리티 메서드 ( +8210 으로 들어와도 010 으로 변환, 특수문자 제거 )
+    private string NormalizePhoneNumber(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return phone;
+
+        // 1. 숫자와 '+' 기호만 남기고 모든 특수문자(공백, 하이픈 등) 제거
+        var cleaned = new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
+
+        // 2. 국가번호(+82)를 국내 식별번호(0)로 변환
+        if (cleaned.StartsWith("+82"))
+        {
+            cleaned = "0" + cleaned.Substring(3);
+        }
+        // (옵션) '+' 없이 '8210'으로 들어오는 예외 케이스 처리
+        else if (cleaned.StartsWith("8210"))
+        {
+            cleaned = "0" + cleaned.Substring(2);
+        }
+
+        return cleaned;
     }
 }

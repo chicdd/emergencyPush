@@ -53,7 +53,7 @@ public class PushLoopHostedService : BackgroundService
             {
                 try
                 {
-                    await SendOnceAsync(_signal.Message ?? fallbackMessage, _signal.TriggeredBy, stoppingToken);
+                    await 푸시송신(_signal.Message ?? fallbackMessage, _signal.최초휴대폰번호, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -72,14 +72,14 @@ public class PushLoopHostedService : BackgroundService
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var active = await db.EmergencyStates.AsNoTracking()
-                .Where(e => e.IsActive)
-                .OrderByDescending(e => e.StartedAt)
+            var active = await db._비상발생내역.AsNoTracking()
+                .Where(e => e.상황여부)
+                .OrderByDescending(e => e.발생시각)
                 .FirstOrDefaultAsync(ct);
             if (active != null)
             {
-                _signal.Activate(active.Message, active.TriggeredBy);
-                _logger.LogWarning("재시작 후 활성 비상 복구. 트리거: {By}", active.TriggeredBy);
+                _signal.Activate(active.메시지내용, active.최초휴대폰번호);
+                _logger.LogWarning("재시작 후 활성 비상 복구. 트리거: {By}", active.최초휴대폰번호);
             }
         }
         catch (Exception ex)
@@ -99,14 +99,14 @@ public class PushLoopHostedService : BackgroundService
     }
 
     /// <summary>한 번 발송: 토큰 보유 사용자 전원에게 푸시 + send_push_log 기록.</summary>
-    private async Task SendOnceAsync(string message, string? triggeredBy, CancellationToken ct)
+    private async Task 푸시송신(string message, string? 최초휴대폰번호, CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var users = await db.Users.AsNoTracking()
+        var users = await db._사용자.AsNoTracking()
             .Where(u => u.FirebaseToken != null && u.FirebaseToken != "")
-            .Select(u => new { u.Id, Token = u.FirebaseToken! })
+            .Select(u => new { u.휴대폰번호, Token = u.FirebaseToken! })
             .ToListAsync(ct);
 
         if (users.Count == 0) return;
@@ -119,12 +119,12 @@ public class PushLoopHostedService : BackgroundService
         var now = KoreaTime.Now;
         foreach (var u in users)
         {
-            db.SendPushLogs.Add(new SendPushLog
+            db._발송푸시내역.Add(new 발송푸시내역
             {
-                UserId = u.Id,
-                Message = message,
-                ReceiveId = triggeredBy,
-                Date = now
+                수신휴대폰번호 = u.휴대폰번호,
+                중계휴대폰번호 = 최초휴대폰번호,
+                푸시내용 = message,
+                송신시각 = now
             });
         }
         await db.SaveChangesAsync(ct);

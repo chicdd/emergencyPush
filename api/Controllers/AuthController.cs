@@ -19,33 +19,33 @@ public class AuthController : ControllerBase
     /// (비밀번호 01579# 검증은 앱 클라이언트에서 수행)
     /// </summary>
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+    public async Task<IActionResult> 유저등록([FromBody] RegisterRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Phone))
             return BadRequest(new { message = "휴대폰번호가 필요합니다." });
 
         var now = KoreaTime.Now;
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == req.Phone);
+        var user = await _db._사용자.FirstOrDefaultAsync(u => u.휴대폰번호 == req.Phone);
         if (user == null)
         {
-            user = new User
+            user = new 사용자
             {
-                Id = req.Phone,
+                휴대폰번호 = req.Phone,
                 FirebaseToken = req.FirebaseToken,
-                RecentDate = now,
-                RegistrationDate = now
+                최근접속시각 = now,
+                등록시각 = now
             };
-            _db.Users.Add(user);
+            _db._사용자.Add(user);
         }
         else
         {
             if (!string.IsNullOrWhiteSpace(req.FirebaseToken))
                 user.FirebaseToken = req.FirebaseToken;
-            user.RecentDate = now;
+            user.최근접속시각 = now;
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { message = "등록 완료", phone = user.Id });
+        return Ok(new { message = "등록 완료", phone = user.휴대폰번호 });
     }
 
     /// <summary>
@@ -58,11 +58,11 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Phone))
             return BadRequest(new { message = "휴대폰번호가 필요합니다." });
 
-        var users = await _db.Users.Where(u => u.Id == req.Phone).ToListAsync();
+        var users = await _db._사용자.Where(u => u.휴대폰번호 == req.Phone).ToListAsync();
         if (users.Count == 0)
             return NotFound(new { message = "해당 사용자를 찾을 수 없습니다." });
 
-        _db.Users.RemoveRange(users);
+        _db._사용자.RemoveRange(users);
         await _db.SaveChangesAsync();
         return Ok(new { message = "계정이 삭제되었습니다.", phone = req.Phone });
     }

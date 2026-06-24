@@ -1,8 +1,10 @@
 import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
+
 import '../config.dart';
 
-/// .NET API 호출 래퍼.
 class ApiService {
   static final Uri _base = Uri.parse(AppConfig.apiBaseUrl);
 
@@ -11,13 +13,14 @@ class ApiService {
   static const _jsonHeaders = {'Content-Type': 'application/json'};
   static const _timeout = Duration(seconds: 12);
 
-  /// 로그아웃: 서버에서 FCM 토큰 제거 → 해당 기기로 푸시 발송 중단.
   static Future<bool> unregister(String phone, String? fcmToken) async {
     try {
       final res = await http
-          .post(_u('/api/auth/unregister'),
-              headers: _jsonHeaders,
-              body: jsonEncode({'phone': phone, 'firebaseToken': fcmToken}))
+          .post(
+            _u('/api/auth/unregister'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'phone': phone, 'firebaseToken': fcmToken}),
+          )
           .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
@@ -25,13 +28,14 @@ class ApiService {
     }
   }
 
-  /// 인증 화면: 휴대폰번호 + FCM 토큰 등록.
   static Future<bool> register(String phone, String? fcmToken) async {
     try {
       final res = await http
-          .post(_u('/api/auth/register'),
-              headers: _jsonHeaders,
-              body: jsonEncode({'phone': phone, 'firebaseToken': fcmToken}))
+          .post(
+            _u('/api/auth/register'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'phone': phone, 'firebaseToken': fcmToken}),
+          )
           .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
@@ -39,12 +43,14 @@ class ApiService {
     }
   }
 
-  /// 계정 삭제: 서버에서 사용자 레코드를 영구 삭제.
   static Future<bool> deleteAccount(String phone) async {
     try {
       final res = await http
-          .post(_u('/api/auth/delete'),
-              headers: _jsonHeaders, body: jsonEncode({'phone': phone}))
+          .post(
+            _u('/api/auth/delete'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'phone': phone}),
+          )
           .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
@@ -52,12 +58,14 @@ class ApiService {
     }
   }
 
-  /// 안드로이드 "메시지 파싱 대상" 저장(is_master=true).
   static Future<bool> setMaster(String id) async {
     try {
       final res = await http
-          .post(_u('/api/device/master'),
-              headers: _jsonHeaders, body: jsonEncode({'id': id}))
+          .post(
+            _u('/api/device/master'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'id': id}),
+          )
           .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
@@ -65,7 +73,6 @@ class ApiService {
     }
   }
 
-  /// 등록된 모니터링 회선 목록(불러오기용).
   static Future<List<Map<String, dynamic>>> getConfigs() async {
     try {
       final res = await http.get(_u('/api/device/configs')).timeout(_timeout);
@@ -77,12 +84,14 @@ class ApiService {
     return [];
   }
 
-  /// 비상 상황 해제(상황 해제 / 상황 확인).
   static Future<bool> resolveEmergency(String? phone) async {
     try {
       final res = await http
-          .post(_u('/api/emergency/resolve'),
-              headers: _jsonHeaders, body: jsonEncode({'phone': phone}))
+          .post(
+            _u('/api/emergency/resolve'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'phone': phone}),
+          )
           .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
@@ -90,31 +99,36 @@ class ApiService {
     }
   }
 
-  /// 현재 비상 상태 조회.
   static Future<bool> isEmergencyActive() async {
+    final m = await getStatus();
+    return m?['active'] == true;
+  }
+
+  static Future<Map<String, dynamic>?> getStatus() async {
     try {
       final res = await http.get(_u('/api/emergency/status')).timeout(_timeout);
       if (res.statusCode == 200) {
-        final m = jsonDecode(res.body) as Map<String, dynamic>;
-        return m['active'] == true;
+        return jsonDecode(res.body) as Map<String, dynamic>;
       }
     } catch (_) {}
-    return false;
+    return null;
   }
 
-  /// 서버 접속 가능 여부 확인.
-  static Future<bool> checkHealth() async {
+  static Future<bool> armStart(String? value) async {
     try {
       final res = await http
-          .get(_u('/api/emergency/status'))
-          .timeout(const Duration(seconds: 5));
+          .post(
+            _u('/api/emergency/armstart'),
+            headers: _jsonHeaders,
+            body: jsonEncode({'value': value}),
+          )
+          .timeout(_timeout);
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
       return false;
     }
   }
 
-  /// 서버에서 테스트 푸시를 1회 발송. 진단용 결과 문구를 반환.
   static Future<String> sendTestPush() async {
     try {
       final res = await http
@@ -134,6 +148,39 @@ class ApiService {
     }
   }
 
-  /// iOS 단축어가 호출할 ping URL(설정 화면에 표시/복사).
-  static String pingUrl(String phone) => '${AppConfig.apiBaseUrl}/api/device/ping/$phone';
+  static String pingUrl(String phone) =>
+      '${AppConfig.apiBaseUrl}/api/device/ping';
+
+  /// 안드로이드에서 수신한 SMS 내용을 서버에 저장/판정 요청한다.
+  /// 서버 DTO 이름에 맞춰 발신자는 sendId, 수신자는 receiveId, 본문은 message로 보낸다.
+  static Future<void> sendParsedSms({
+    required String sender,
+    required String receiver,
+    required String body,
+  }) async {
+
+    print(('푸시보냄'));
+    final response = await http
+        .post(
+          _u('/api/message/incoming'),
+          headers: _jsonHeaders,
+          body: jsonEncode({
+            'sendId': sender,
+            'receiveId': receiver,
+            'message': body,
+          }),
+        )
+        .timeout(_timeout);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('SMS sent to API');
+      return;
+    }
+
+    debugPrint('SMS API error: ${response.statusCode} - ${response.body}');
+    throw http.ClientException(
+      'SMS API error: ${response.statusCode}',
+      _u('/api/message/incoming'),
+    );
+  }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import '../services/fcm_service.dart';
+import '../services/local_notifications.dart';
 import '../services/session.dart';
 import '../theme.dart';
 import 'auth_screen.dart';
@@ -61,7 +62,9 @@ class _MainLineSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('메인 회선 설정')),
-      body: Platform.isIOS ? const _IosMainLineSettings() : const _AndroidMainLineSettings(),
+      body: Platform.isIOS
+          ? const _IosMainLineSettings()
+          : const _AndroidMainLineSettings(),
     );
   }
 }
@@ -78,7 +81,7 @@ class _IosMainLineSettings extends StatefulWidget {
 
 class _IosMainLineSettingsState extends State<_IosMainLineSettings> {
   final _ctrl = TextEditingController();
-  String _url  = '';
+  String _url = '';
   bool _saving = false;
 
   static const _steps = <String>[
@@ -117,7 +120,7 @@ class _IosMainLineSettingsState extends State<_IosMainLineSettings> {
     setState(() => _ctrl.text = id ?? '');
   }
 
-  Future<void> _save() async {
+  Future<void> _iosSave() async {
     final id = _ctrl.text.trim();
     if (id.isEmpty) return;
     setState(() => _saving = true);
@@ -145,26 +148,43 @@ class _IosMainLineSettingsState extends State<_IosMainLineSettings> {
         const SizedBox(height: 8),
         const Text(
           '비상 신호를 감지할 휴대폰번호를 입력하고 저장하세요.',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13.5, height: 1.4),
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
         ),
         const SizedBox(height: 14),
         TextField(
           controller: _ctrl,
           keyboardType: TextInputType.phone,
-          style: const TextStyle(color: AppColors.textPrimary, letterSpacing: 1),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]'))],
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            letterSpacing: 1,
+          ),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]')),
+          ],
           decoration: const InputDecoration(
             hintText: '예: 01012345678',
-            prefixIcon: Icon(Icons.sim_card_outlined, color: AppColors.textMuted),
+            prefixIcon: Icon(
+              Icons.sim_card_outlined,
+              color: AppColors.textMuted,
+            ),
           ),
         ),
         const SizedBox(height: 14),
         ElevatedButton.icon(
-          onPressed: _saving ? null : _save,
+          onPressed: _saving ? null : _iosSave,
           icon: _saving
               ? const SizedBox(
-                  height: 20, width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
               : const Icon(Icons.save_outlined, size: 20),
           label: const Text('저장'),
         ),
@@ -172,7 +192,10 @@ class _IosMainLineSettingsState extends State<_IosMainLineSettings> {
         // iOS 단축어 설정 방법
         const _SectionTitle('iOS 단축어 사용방법'),
         const SizedBox(height: 12),
-        ...List.generate(_steps.length, (i) => _StepRow(index: i + 1, text: _steps[i])),
+        ...List.generate(
+          _steps.length,
+          (i) => _StepRow(index: i + 1, text: _steps[i]),
+        ),
         const SizedBox(height: 28),
         const _SectionTitle('Ping URL'),
         const SizedBox(height: 12),
@@ -199,9 +222,9 @@ class _IosMainLineSettingsState extends State<_IosMainLineSettings> {
               : () async {
                   await Clipboard.setData(ClipboardData(text: _url));
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('URL을 복사했습니다.')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('URL을 복사했습니다.')));
                 },
           icon: const Icon(Icons.copy, size: 20),
           label: const Text('URL 복사'),
@@ -218,13 +241,14 @@ class _AndroidMainLineSettings extends StatefulWidget {
   const _AndroidMainLineSettings();
 
   @override
-  State<_AndroidMainLineSettings> createState() => _AndroidMainLineSettingsState();
+  State<_AndroidMainLineSettings> createState() =>
+      _AndroidMainLineSettingsState();
 }
 
 class _AndroidMainLineSettingsState extends State<_AndroidMainLineSettings> {
   final _ctrl = TextEditingController();
   bool _loading = true;
-  bool _saving  = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -250,15 +274,17 @@ class _AndroidMainLineSettingsState extends State<_AndroidMainLineSettings> {
     });
   }
 
-  Future<void> _save() async {
+  Future<void> _androidSave() async {
     final id = _ctrl.text.trim();
+    print('api전송함');
     if (id.isEmpty) return;
     setState(() => _saving = true);
+
     final ok = await ApiService.setMaster(id);
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? '저장되었습니다. (is_master = true)' : '저장 실패. 서버 연결을 확인하세요.')),
+      SnackBar(content: Text(ok ? '저장되었습니다.' : '저장 실패. 서버 연결을 확인하세요.')),
     );
   }
 
@@ -271,7 +297,9 @@ class _AndroidMainLineSettingsState extends State<_AndroidMainLineSettings> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      );
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -280,14 +308,23 @@ class _AndroidMainLineSettingsState extends State<_AndroidMainLineSettings> {
         const SizedBox(height: 8),
         const Text(
           '비상 신호를 감지할 모니터링 회선(휴대폰번호)을 입력하세요.\n저장하면 해당 회선이 감지 대상(master)으로 설정됩니다.',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13.5, height: 1.4),
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
         ),
         const SizedBox(height: 18),
         TextField(
           controller: _ctrl,
           keyboardType: TextInputType.phone,
-          style: const TextStyle(color: AppColors.textPrimary, letterSpacing: 1),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]'))],
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            letterSpacing: 1,
+          ),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]')),
+          ],
           decoration: const InputDecoration(
             hintText: '예: 01012345678',
             prefixIcon: Icon(Icons.sms_outlined, color: AppColors.textMuted),
@@ -295,11 +332,16 @@ class _AndroidMainLineSettingsState extends State<_AndroidMainLineSettings> {
         ),
         const SizedBox(height: 22),
         ElevatedButton.icon(
-          onPressed: _saving ? null : _save,
+          onPressed: _saving ? null : _androidSave,
           icon: _saving
               ? const SizedBox(
-                  height: 20, width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
               : const Icon(Icons.save_outlined, size: 20),
           label: const Text('저장'),
         ),
@@ -315,11 +357,12 @@ class _ResolveEmergencySection extends StatefulWidget {
   const _ResolveEmergencySection();
 
   @override
-  State<_ResolveEmergencySection> createState() => _ResolveEmergencySectionState();
+  State<_ResolveEmergencySection> createState() =>
+      _ResolveEmergencySectionState();
 }
 
 class _ResolveEmergencySectionState extends State<_ResolveEmergencySection> {
-  bool _resolving   = false;
+  bool _resolving = false;
   bool _sendingTest = false;
 
   Future<void> _sendTest() async {
@@ -337,7 +380,10 @@ class _ResolveEmergencySectionState extends State<_ResolveEmergencySection> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('상황 해제', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          '상황 해제',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: const Text(
           '서버의 비상 상황을 해제합니다.\n모든 사용자에게 가던 푸시가 즉시 멈춥니다.',
           style: TextStyle(color: AppColors.textMuted, height: 1.4),
@@ -345,12 +391,20 @@ class _ResolveEmergencySectionState extends State<_ResolveEmergencySection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('해제',
-                style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
+            child: const Text(
+              '해제',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -360,6 +414,8 @@ class _ResolveEmergencySectionState extends State<_ResolveEmergencySection> {
     setState(() => _resolving = true);
     final phone = await Session.getPhone();
     final ok = await ApiService.resolveEmergency(phone);
+    await LocalNotifications.stopEmergencyAlert();
+    FcmService.resetEmergencyHandling();
     if (!mounted) return;
     setState(() => _resolving = false);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -413,7 +469,10 @@ class _LogoutSectionState extends State<_LogoutSection> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('로그아웃', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          '로그아웃',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: const Text(
           '로그아웃하면 이 기기로 비상 푸시가 발송되지 않습니다.',
           style: TextStyle(color: AppColors.textMuted, height: 1.4),
@@ -421,12 +480,20 @@ class _LogoutSectionState extends State<_LogoutSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('로그아웃',
-                style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
+            child: const Text(
+              '로그아웃',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -461,16 +528,29 @@ class _LogoutSectionState extends State<_LogoutSection> {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.danger,
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
         onPressed: _loading ? null : _logout,
         icon: _loading
             ? const SizedBox(
-                height: 20, width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.danger))
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.danger,
+                ),
+              )
             : const Icon(Icons.logout_rounded, size: 20),
-        label: const Text('로그아웃',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        label: const Text(
+          '로그아웃',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
+        ),
       ),
     );
   }
@@ -496,9 +576,9 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
     final phone = await Session.getPhone();
     if (!mounted) return;
     if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보를 찾을 수 없습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 정보를 찾을 수 없습니다.')));
       return;
     }
 
@@ -510,7 +590,10 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
         return StatefulBuilder(
           builder: (ctx, setLocal) => AlertDialog(
             backgroundColor: AppColors.surface,
-            title: const Text('계정 삭제', style: TextStyle(color: AppColors.textPrimary)),
+            title: const Text(
+              '계정 삭제',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -524,7 +607,10 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
                   controller: inputCtrl,
                   autofocus: true,
                   keyboardType: TextInputType.phone,
-                  style: const TextStyle(color: AppColors.textPrimary, letterSpacing: 1),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    letterSpacing: 1,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-]')),
                   ],
@@ -532,7 +618,10 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
                       setLocal(() => matched = _digits(v) == _digits(phone)),
                   decoration: const InputDecoration(
                     hintText: '휴대폰번호 입력',
-                    prefixIcon: Icon(Icons.smartphone_outlined, color: AppColors.textMuted),
+                    prefixIcon: Icon(
+                      Icons.smartphone_outlined,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ],
@@ -540,14 +629,19 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('취소', style: TextStyle(color: AppColors.textMuted)),
+                child: const Text(
+                  '취소',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
               ),
               TextButton(
                 onPressed: matched ? () => Navigator.pop(ctx, true) : null,
                 child: Text(
                   '계정삭제',
                   style: TextStyle(
-                    color: matched ? AppColors.danger : AppColors.textMuted.withValues(alpha: 0.4),
+                    color: matched
+                        ? AppColors.danger
+                        : AppColors.textMuted.withValues(alpha: 0.4),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -565,9 +659,9 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
 
     if (!ok) {
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계정 삭제 실패. 서버 연결을 확인하세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('계정 삭제 실패. 서버 연결을 확인하세요.')));
       return;
     }
 
@@ -588,16 +682,29 @@ class _DeleteAccountSectionState extends State<_DeleteAccountSection> {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.danger,
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
         onPressed: _loading ? null : _deleteAccount,
         icon: _loading
             ? const SizedBox(
-                height: 20, width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.danger))
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.danger,
+                ),
+              )
             : const Icon(Icons.delete_forever_outlined, size: 20),
-        label: const Text('계정 삭제',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        label: const Text(
+          '계정 삭제',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
+        ),
       ),
     );
   }
@@ -635,13 +742,22 @@ class _MenuTile extends StatelessWidget {
         ),
         child: Icon(icon, size: 20, color: iconColor),
       ),
-      title: Text(title,
-          style: const TextStyle(
-              color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
-      subtitle: Text(subtitle,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-      trailing: Icon(Icons.chevron_right_rounded,
-          color: AppColors.textMuted.withValues(alpha: 0.6)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5),
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.textMuted.withValues(alpha: 0.6),
+      ),
       onTap: onTap,
     );
   }
@@ -679,16 +795,23 @@ class _ActionTile extends StatelessWidget {
               Icon(icon, color: iconColor, size: 22),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(title,
-                    style: TextStyle(
-                        color: titleColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               if (loading)
                 SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: iconColor),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: iconColor,
+                  ),
                 ),
             ],
           ),
@@ -718,12 +841,15 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-        style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1));
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1,
+      ),
+    );
   }
 }
 
@@ -746,21 +872,31 @@ class _StepRow extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.techBlue.withValues(alpha: 0.15),
-              border: Border.all(color: AppColors.techBlue.withValues(alpha: 0.6)),
+              border: Border.all(
+                color: AppColors.techBlue.withValues(alpha: 0.6),
+              ),
             ),
-            child: Text('$index',
-                style: const TextStyle(
-                    color: AppColors.techBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              '$index',
+              style: const TextStyle(
+                color: AppColors.techBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text(text,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary, fontSize: 15, height: 1.3)),
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  height: 1.3,
+                ),
+              ),
             ),
           ),
         ],

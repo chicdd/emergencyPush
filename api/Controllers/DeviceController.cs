@@ -27,12 +27,12 @@ public class DeviceController : ControllerBase
     /// (공백·'/' 등 특수문자가 URL 에서 끊기지 않도록 본문으로 받는다.)
     /// 본문이 없으면 메시지 없이 카운트만 증가한다. message 는 ReceiveMessageLog.Message 컬럼에 저장된다.
     /// </summary>
-    [HttpPost("ping/{id}")]
+    [HttpPost("ping")]
     public async Task<IActionResult> Ping(
-        string id,
+
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PingRequest? body = null)
     {
-        var result = await _emergency.RegisterIncomingAsync(id, sendId: null, message: body?.Message, markMaster: true);
+        var result = await _emergency.RegisterIncomingAsync(sendId: body?.SendId, receiveId: body?.ReceiveId, message: body?.Message, markMaster: true);
         // 단축어 친화적 평문 응답
         return Content($"OK count={result.CurrentCount} triggered={result.Triggered}", "text/plain");
     }
@@ -41,9 +41,9 @@ public class DeviceController : ControllerBase
     [HttpGet("configs")]
     public async Task<IActionResult> GetConfigs()
     {
-        var ids = await _db.DeviceSyncConfigs.AsNoTracking()
+        var ids = await _db._기기동기화설정.AsNoTracking()
             .OrderBy(c => c.Id)
-            .Select(c => new { c.Id, c.IsMaster, c.Count })
+            .Select(c => new { c.Id, c.메인여부, c.메시지큐 })
             .ToListAsync();
         return Ok(ids);
     }
@@ -52,9 +52,9 @@ public class DeviceController : ControllerBase
     [HttpGet("config/{id}")]
     public async Task<IActionResult> GetConfig(string id)
     {
-        var c = await _db.DeviceSyncConfigs.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var c = await _db._기기동기화설정.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (c == null) return NotFound();
-        return Ok(new { c.Id, c.IsMaster, c.Count });
+        return Ok(new { c.Id, c.메인여부, c.메시지큐 });
     }
 
     /// <summary>
@@ -66,17 +66,17 @@ public class DeviceController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Id))
             return BadRequest(new { message = "id(휴대폰번호)가 필요합니다." });
 
-        var c = await _db.DeviceSyncConfigs.FirstOrDefaultAsync(x => x.Id == req.Id);
+        var c = await _db._기기동기화설정.FirstOrDefaultAsync(x => x.Id == req.Id);
         if (c == null)
         {
-            c = new DeviceSyncConfig { Id = req.Id, IsMaster = true, Count = 0 };
-            _db.DeviceSyncConfigs.Add(c);
+            c = new 기기동기화설정 { Id = req.Id, 메인여부 = true, 메시지큐 = 0 };
+            _db._기기동기화설정.Add(c);
         }
         else
         {
-            c.IsMaster = true;
+            c.메인여부 = true;
         }
         await _db.SaveChangesAsync();
-        return Ok(new { message = "저장 완료", id = c.Id, isMaster = c.IsMaster });
+        return Ok(new { message = "저장 완료", id = c.Id, isMaster = c.메인여부 });
     }
 }

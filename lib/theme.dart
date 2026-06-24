@@ -18,6 +18,10 @@ class AppColors {
 
   static const Color fieldFill   = Color(0xFF0C1118);
   static const Color fieldBorder = Color(0xFF1E2D3D);
+
+  // 조치중(상황확인됨, 미재무장) 화면 호흡 그라데이션 (노랑 ↔ 주황)
+  static const Color situationYellow = Color(0xFFFFC107);
+  static const Color situationOrange = Color(0xFFFF8A00);
 }
 
 ThemeData buildAppTheme() {

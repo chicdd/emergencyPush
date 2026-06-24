@@ -12,8 +12,8 @@ public class SettingsService
 
     public async Task<string?> GetStringAsync(string key, string? fallback = null)
     {
-        var s = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(x => x.Key == key);
-        return s?.Value ?? fallback;
+        var s = await _db._환경설정.AsNoTracking().FirstOrDefaultAsync(x => x.키 == key);
+        return s?.값 ?? fallback;
     }
 
     public async Task<int> GetIntAsync(string key, int fallback)
@@ -29,12 +29,15 @@ public static class SettingKeys
     public const string TriggerThreshold = "trigger_threshold";   // 기본 10
     public const string TriggerWindowSec = "trigger_window_sec";  // 기본 60
     public const string CountResetMinutes = "count_reset_minutes"; // 기본 10
-    public const string PushIntervalMs = "push_interval_ms";      // 기본 1000
+    public const string PushIntervalMs = "push_interval_ms";      // 기본 2초
     public const string PushMessage = "push_message";
+    public const string 상황확인여부 = "상황확인여부";
 
     public const int DefaultThreshold = 10;
     public const int DefaultWindowSec = 60;
     public const int DefaultResetMinutes = 10;
-    public const int DefaultPushIntervalMs = 1000;
-    public const string DefaultPushMessage = "[비상] 캡스 보라매 신호 미상승 상황이 감지되었습니다. 즉시 확인하세요.";
+    public const int DefaultPushIntervalMs = 2000;
+    public const string DefaultPushMessage = "[비상] 메세지 불러오기 실패. 메세지를 직접 확인하세요.";
+    public const int Default상황확인여부 = 0;
 }
+    

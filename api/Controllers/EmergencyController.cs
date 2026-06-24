@@ -28,13 +28,27 @@ public class EmergencyController : ControllerBase
         return Ok(new { message = "상황 해제됨", resolved = count });
     }
 
+    ///// <summary>
+    ///// 상황 확인(=해제). 푸시가 지속되던 모든 사용자의 푸시를 멈춘다.
+    ///// </summary>
+    //[HttpPost("acknowledge")]
+    //public async Task<IActionResult> Acknowledge([FromBody] ResolveRequest? req)
+    //{
+    //    var count = await _emergency.ResolveAllAsync(req?.Phone);
+    //    return Ok(new { message = "상황 확인됨", resolved = count });
+    //}
+
     /// <summary>
-    /// 상황 확인(=해제). 푸시가 지속되던 모든 사용자의 푸시를 멈춘다.
+    /// 경계 시작. 앱의 "경계 설정" 버튼에서 호출.
+    /// 종료한 상황을 다시 복구하여 서버측 푸시 발송을 대기상태로 바꾼다.
     /// </summary>
-    [HttpPost("acknowledge")]
-    public async Task<IActionResult> Acknowledge([FromBody] ResolveRequest? req)
+    [HttpPost("armstart")]
+    public async Task<IActionResult> ArmStart([FromBody] ArmRequest? req)
     {
-        var count = await _emergency.ResolveAllAsync(req?.Phone);
-        return Ok(new { message = "상황 확인됨", resolved = count });
+        await _emergency.ArmAsync(req?.value);
+        return Ok(new { message = "경계 시작됨" });
     }
+
+   
+   
 }

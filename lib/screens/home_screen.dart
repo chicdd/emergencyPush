@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
+import 'situation_home.dart';
 
 /// 홈 화면: '정상' + 레이더 링 + 레드↔블루 호흡 애니메이션.
 class HomeScreen extends StatefulWidget {
@@ -38,9 +39,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _checkServer() async {
-    final ok = await ApiService.checkHealth();
-    if (mounted && ok != !_serverUnreachable) {
-      setState(() => _serverUnreachable = !ok);
+    final status = await ApiService.getStatus();
+    final reachable = status != null;
+    if (mounted && reachable == _serverUnreachable) {
+      setState(() => _serverUnreachable = !reachable);
+    }
+    // 다른 기기에서 이미 상황 해제(상황확인여부=1)했다면 조치중 화면으로 전환.
+    if (status != null && status['acknowledged'] == true && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SituationHomeScreen()),
+      );
     }
   }
 

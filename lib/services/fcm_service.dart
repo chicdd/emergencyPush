@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 /// 앱이 종료/백그라운드 상태일 때 FCM을 받으면 호출된다.
 /// 반드시 top-level 함수이고 vm entry-point여야 한다.
